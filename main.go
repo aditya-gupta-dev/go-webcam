@@ -12,7 +12,7 @@ import (
 	"github.com/blackjack/webcam"
 )
 
-const BUFFER_SIZE = 12 
+const BufferSize = 12 
 
 func main() { 
 	cam, err := webcam.Open("/dev/video0")
@@ -55,11 +55,14 @@ func main() {
 }
 
 func readWebCam(signalChan chan os.Signal, cam *webcam.Webcam) {
-	
-	frameChan := make(chan *[]byte, 12)
 
-	go writeToFile(frameChan)
-	go processImage(frameChan)
+	tui := InitTui()
+	defer tui.CloseTui() 
+
+	frameChan := make(chan *[]byte, BufferSize)
+
+	go writeToFile(frameChan, tui)
+	go processImage(frameChan, tui)
 
 	for {
 		select {
@@ -83,27 +86,31 @@ func readWebCam(signalChan chan os.Signal, cam *webcam.Webcam) {
 	}
 }
 
-func processImage(frameChn chan *[]byte) {
+func processImage(frameChn chan *[]byte, tui *Tui) {
+	var i int 
 	for frame := range frameChn { 
 		reader := bytes.NewReader(*frame)
-		img, err := jpeg.Decode(reader)
+		_, err := jpeg.Decode(reader)
 		if err != nil { 
 			log.Fatalf("error: %s\n", err)
 		}
 
-		log.Printf("recieved frame: width=%d height=%d\n", img.Bounds().Dx(), img.Bounds().Dy())
+		tui.UpdateProcessText(fmt.Sprintf("process frame number: %d\n", i)) 
+		i += 1 
 	}
 
 	log.Printf("closed image processing worker\n") 
 }
 
-func writeToFile(frameChn chan *[]byte) { 
+func writeToFile(frameChn chan *[]byte, tui *Tui) { 
 	var i int 
 	for frame := range frameChn { 
 		err := os.WriteFile(fmt.Sprintf("frames/%d.jpg", i), *frame, 0644)
 		if err != nil { 
 			log.Fatalf("error: %s\n", err)
 		}
+		
+		tui.UpdateWriterText(fmt.Sprintf("Wrote: frames/%d.jpg", i))
 
 		i += 1 
 	}
