@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/blackjack/webcam"
 )
@@ -36,7 +37,7 @@ func main() {
 		break
 	}
 
-	_, _, _, err = cam.SetImageFormat(format, framesize.MaxWidth, framesize.MinHeight)
+	_, _, _, err = cam.SetImageFormat(format, framesize.MaxWidth, framesize.MaxHeight)
 	if err != nil {
 		log.Fatalf("error: %s\n", err)
 	}
@@ -52,6 +53,7 @@ func main() {
 	go readWebCam(signalChan, cam)
 
 	<-signalChan
+	time.Sleep(time.Second)
 }
 
 func readWebCam(signalChan chan os.Signal, cam *webcam.Webcam) {
